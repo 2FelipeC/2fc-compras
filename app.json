@@ -1,25 +1,33 @@
 {
   "expo": {
     "name": "2FC-Compras",
-    "slug": "2FC-Compras",
+    "slug": "2fc-compras",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/LOGO2FC.png",
+    "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.fccompras.app",
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/LOGO2FC.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a952216f-2fe7-4ae7-8519-ddbf0e64beed"
+      }
     }
   }
 }
