@@ -8,7 +8,6 @@ import {
   FinancialPeriod,
 } from '../types/financial';
 import { CurrencyCode } from '../types/purchase';
-import { createDefaultFinancialItems } from '../utils/defaultFinancialItems';
 import { roundMoney } from '../utils/financialCalculations';
 import { createId } from '../utils/purchase';
 
@@ -50,7 +49,7 @@ export function useFinancial() {
       startingAmount: roundMoney(startingAmount),
       currency,
       status: 'draft',
-      items: createDefaultFinancialItems(now),
+      items: [],
       createdAt: now,
     };
     setData((current) => ({

@@ -5,6 +5,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -35,6 +36,14 @@ interface PurchasesModuleProps {
   onBackToMenu: () => void;
 }
 
+interface ConfirmationState {
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+}
+
 export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
   const { theme, isDark } = useAppTheme();
   const { language, t } = useLanguage();
@@ -45,6 +54,7 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
   const [selectedPurchase, setSelectedPurchase] = useState<CompletedPurchase | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [replaceActiveConfirmed, setReplaceActiveConfirmed] = useState(false);
   const [budgetInput, setBudgetInput] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(DEFAULT_CURRENCY);
@@ -101,17 +111,27 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
     }
 
     actionLockRef.current = true;
-    action();
-
-    setTimeout(() => {
+    try {
+      action();
+    } finally {
       actionLockRef.current = false;
-    }, 600);
+    }
   };
 
   const resetProductForm = () => {
     setProductName('');
     setProductPrice('');
     setProductQuantity('1');
+  };
+
+  const requestConfirmation = (nextConfirmation: ConfirmationState) => {
+    setConfirmation(nextConfirmation);
+  };
+
+  const confirmPendingAction = () => {
+    const action = confirmation?.onConfirm;
+    setConfirmation(null);
+    action?.();
   };
 
   const createPurchase = (budget: number) => {
@@ -138,17 +158,16 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
         return;
       }
 
-      Alert.alert(t.alerts.activePurchaseExistsTitle, t.alerts.activePurchaseExistsMessage, [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.alerts.newPurchase,
-          style: 'destructive',
-          onPress: () => {
-            setReplaceActiveConfirmed(true);
-            setScreen('start');
-          },
+      requestConfirmation({
+        title: t.alerts.activePurchaseExistsTitle,
+        message: t.alerts.activePurchaseExistsMessage,
+        confirmLabel: t.alerts.newPurchase,
+        destructive: true,
+        onConfirm: () => {
+          setReplaceActiveConfirmed(true);
+          setScreen('start');
         },
-      ]);
+      });
     });
   };
 
@@ -162,14 +181,13 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
       }
 
       if (activePurchase && !replaceActiveConfirmed) {
-        Alert.alert(t.alerts.activePurchaseExistsTitle, t.alerts.activePurchaseExistsMessage, [
-          { text: t.common.cancel, style: 'cancel' },
-          {
-            text: t.alerts.startNew,
-            style: 'destructive',
-            onPress: () => createPurchase(parsedBudget),
-          },
-        ]);
+        requestConfirmation({
+          title: t.alerts.activePurchaseExistsTitle,
+          message: t.alerts.activePurchaseExistsMessage,
+          confirmLabel: t.alerts.startNew,
+          destructive: true,
+          onConfirm: () => createPurchase(parsedBudget),
+        });
         return;
       }
 
@@ -242,16 +260,15 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
 
   const goBackToHome = () => {
     runGuardedAction(() => {
-      Alert.alert(t.alerts.backHomeTitle, t.alerts.backHomeMessage, [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.common.backHome,
-          onPress: () => {
-            setReplaceActiveConfirmed(false);
-            setScreen('home');
-          },
+      requestConfirmation({
+        title: t.alerts.backHomeTitle,
+        message: t.alerts.backHomeMessage,
+        confirmLabel: t.common.backHome,
+        onConfirm: () => {
+          setReplaceActiveConfirmed(false);
+          setScreen('home');
         },
-      ]);
+      });
     });
   };
 
@@ -261,45 +278,42 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
         return;
       }
 
-      Alert.alert(t.alerts.finishPurchaseTitle, undefined, [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.alerts.finishPurchase,
-          style: 'destructive',
-          onPress: () => {
-            const completedPurchase: CompletedPurchase = {
-              ...activePurchase,
-              endedAt: new Date().toISOString(),
-            };
+      requestConfirmation({
+        title: t.alerts.finishPurchaseTitle,
+        confirmLabel: t.alerts.finishPurchase,
+        destructive: true,
+        onConfirm: () => {
+          const completedPurchase: CompletedPurchase = {
+            ...activePurchase,
+            endedAt: new Date().toISOString(),
+          };
 
-            setPurchaseHistory((currentHistory) => [completedPurchase, ...currentHistory]);
-            setActivePurchase(null);
-            setSelectedPurchase(null);
-            resetProductForm();
-            setReplaceActiveConfirmed(false);
-            setScreen('home');
-          },
+          setPurchaseHistory((currentHistory) => [completedPurchase, ...currentHistory]);
+          setActivePurchase(null);
+          setSelectedPurchase(null);
+          resetProductForm();
+          setReplaceActiveConfirmed(false);
+          setScreen('home');
         },
-      ]);
+      });
     });
   };
 
   const confirmDeletePurchase = (purchaseId: string) => {
     runGuardedAction(() => {
-      Alert.alert(t.alerts.deletePurchaseTitle, t.alerts.deletePurchaseMessage, [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.common.delete,
-          style: 'destructive',
-          onPress: () => {
-            setPurchaseHistory((currentHistory) => currentHistory.filter((purchase) => purchase.id !== purchaseId));
-            if (selectedPurchase?.id === purchaseId) {
-              setSelectedPurchase(null);
-              setScreen('home');
-            }
-          },
+      requestConfirmation({
+        title: t.alerts.deletePurchaseTitle,
+        message: t.alerts.deletePurchaseMessage,
+        confirmLabel: t.common.delete,
+        destructive: true,
+        onConfirm: () => {
+          setPurchaseHistory((currentHistory) => currentHistory.filter((purchase) => purchase.id !== purchaseId));
+          if (selectedPurchase?.id === purchaseId) {
+            setSelectedPurchase(null);
+            setScreen('home');
+          }
         },
-      ]);
+      });
     });
   };
 
@@ -551,6 +565,32 @@ export function PurchasesModule({ onBackToMenu }: PurchasesModuleProps) {
       >
         {renderCurrentScreen()}
       </KeyboardAvoidingView>
+      <Modal
+        visible={Boolean(confirmation)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmation(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setConfirmation(null)}>
+          <Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}>
+            <Text style={styles.modalTitle}>{confirmation?.title}</Text>
+            {confirmation?.message ? <Text style={styles.modalSubtitle}>{confirmation.message}</Text> : null}
+            <View style={styles.modalActions}>
+              <PrimaryButton
+                label={confirmation?.confirmLabel ?? ''}
+                iconName={confirmation?.destructive ? 'warning-outline' : 'checkmark-outline'}
+                variant={confirmation?.destructive ? 'dangerOutline' : 'primary'}
+                onPress={confirmPendingAction}
+              />
+              <PrimaryButton
+                label={t.common.cancel}
+                variant="secondary"
+                onPress={() => setConfirmation(null)}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <SettingsModal visible={isSettingsVisible} onClose={() => setIsSettingsVisible(false)} />
     </SafeAreaView>
   );
@@ -800,6 +840,10 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       fontSize: typography.body,
       fontWeight: '600',
+    },
+    modalActions: {
+      gap: spacing.sm,
+      marginTop: spacing.lg,
     },
     settingsSectionTitle: {
       marginTop: spacing.lg,
