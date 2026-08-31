@@ -2,9 +2,11 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { AppTheme, radius, spacing, typography } from '../styles/theme';
+import { CurrencyCode } from '../types/purchase';
 import { PrimaryButton } from './PrimaryButton';
 
 interface ProductFormProps {
+  currency: CurrencyCode;
   productName: string;
   productPrice: string;
   productQuantity: string;
@@ -15,6 +17,7 @@ interface ProductFormProps {
 }
 
 export function ProductForm({
+  currency,
   productName,
   productPrice,
   productQuantity,
@@ -45,11 +48,13 @@ export function ProductForm({
 
       <View style={styles.row}>
         <View style={styles.column}>
-          <Text style={styles.label}>{t.productForm.price}</Text>
+          <Text style={styles.label}>
+            {t.productForm.price} ({currency})
+          </Text>
           <TextInput
             value={productPrice}
             onChangeText={onChangeProductPrice}
-            placeholder={t.productForm.pricePlaceholder}
+            placeholder={t.productForm.pricePlaceholder.replace('{{currency}}', currency)}
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="decimal-pad"
             style={styles.input}

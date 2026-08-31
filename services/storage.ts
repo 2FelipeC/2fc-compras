@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivePurchase, CompletedPurchase, Product } from '../types/purchase';
+import { ActivePurchase, CompletedPurchase, DEFAULT_CURRENCY, isCurrencyCode, Product } from '../types/purchase';
 import { calculateTotalSpent } from '../utils/purchase';
 
 export const ACTIVE_PURCHASE_KEY = '2fc-compras:active-purchase';
@@ -9,6 +9,14 @@ interface StoredData {
   activePurchase: ActivePurchase | null;
   purchaseHistory: CompletedPurchase[];
 }
+
+const safeParse = (value: string): unknown | null => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
 
 const isProduct = (value: unknown): value is Product => {
   if (!value || typeof value !== 'object') {
@@ -42,7 +50,8 @@ const isActivePurchase = (value: unknown): value is ActivePurchase => {
     Array.isArray(purchase.products) &&
     purchase.products.every(isProduct) &&
     Number.isFinite(purchase.totalSpent) &&
-    typeof purchase.startedAt === 'string'
+    typeof purchase.startedAt === 'string' &&
+    (purchase.currency === undefined || isCurrencyCode(purchase.currency))
   );
 };
 
@@ -51,6 +60,7 @@ const isCompletedPurchase = (value: unknown): value is CompletedPurchase =>
 
 const normalizeActivePurchase = (purchase: ActivePurchase): ActivePurchase => ({
   ...purchase,
+  currency: isCurrencyCode(purchase.currency) ? purchase.currency : DEFAULT_CURRENCY,
   totalSpent: calculateTotalSpent(purchase.products),
 });
 
@@ -64,7 +74,7 @@ export const loadStoredData = async (): Promise<StoredData> => {
   let purchaseHistory: CompletedPurchase[] = [];
 
   if (storedActivePurchase) {
-    const parsedActivePurchase: unknown = JSON.parse(storedActivePurchase);
+    const parsedActivePurchase = safeParse(storedActivePurchase);
 
     if (isActivePurchase(parsedActivePurchase)) {
       activePurchase = normalizeActivePurchase(parsedActivePurchase);
@@ -72,7 +82,7 @@ export const loadStoredData = async (): Promise<StoredData> => {
   }
 
   if (storedPurchaseHistory) {
-    const parsedPurchaseHistory: unknown = JSON.parse(storedPurchaseHistory);
+    const parsedPurchaseHistory = safeParse(storedPurchaseHistory);
 
     if (Array.isArray(parsedPurchaseHistory)) {
       purchaseHistory = parsedPurchaseHistory.filter(isCompletedPurchase).map((purchase) => ({

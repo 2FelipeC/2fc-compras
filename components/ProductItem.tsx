@@ -1,17 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../context/LanguageContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { AppTheme, radius, spacing, typography } from '../styles/theme';
-import { Product } from '../types/purchase';
+import { CurrencyCode, Product } from '../types/purchase';
 import { formatCurrency } from '../utils/format';
 
 interface ProductItemProps {
   product: Product;
+  currency: CurrencyCode;
   onDelete?: () => void;
 }
 
-export function ProductItem({ product, onDelete }: ProductItemProps) {
+export function ProductItem({ product, currency, onDelete }: ProductItemProps) {
   const { theme } = useAppTheme();
+  const { language } = useLanguage();
   const styles = createStyles(theme);
   const productTotal = product.price * product.quantity;
 
@@ -20,10 +23,10 @@ export function ProductItem({ product, onDelete }: ProductItemProps) {
       <View style={styles.copy}>
         <Text style={styles.name}>{product.name}</Text>
         <Text style={styles.meta}>
-          {product.quantity} x {formatCurrency(product.price)}
+          {product.quantity} x {formatCurrency(product.price, currency, language)}
         </Text>
       </View>
-      <Text style={styles.total}>{formatCurrency(productTotal)}</Text>
+      <Text style={styles.total}>{formatCurrency(productTotal, currency, language)}</Text>
       {onDelete ? (
         <Pressable style={styles.deleteButton} onPress={onDelete} hitSlop={10}>
           <Ionicons name="trash-outline" size={19} color={theme.colors.primaryDark} />

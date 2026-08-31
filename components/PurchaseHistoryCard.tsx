@@ -15,7 +15,7 @@ interface PurchaseHistoryCardProps {
 
 export function PurchaseHistoryCard({ purchase, onOpen, onDelete }: PurchaseHistoryCardProps) {
   const { theme } = useAppTheme();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const styles = createStyles(theme);
   const balance = getPurchaseBalance(purchase);
   const hasOverspent = balance < 0;
@@ -24,20 +24,21 @@ export function PurchaseHistoryCard({ purchase, onOpen, onDelete }: PurchaseHist
     <View style={styles.card}>
       <Pressable style={styles.openArea} onPress={onOpen}>
         <View style={styles.headerRow}>
-          <Text style={styles.date}>{formatDateTime(purchase.endedAt)}</Text>
+          <Text style={styles.date}>{formatDateTime(purchase.endedAt, language)}</Text>
           <Text style={styles.products}>
             {t.history.products.replace('{{count}}', String(purchase.products.length))}
           </Text>
         </View>
         <View style={styles.grid}>
           <Text style={styles.meta}>
-            {t.history.budget} {formatCurrency(purchase.budget)}
+            {t.history.budget} {formatCurrency(purchase.budget, purchase.currency, language)}
           </Text>
           <Text style={styles.meta}>
-            {t.history.spent} {formatCurrency(purchase.totalSpent)}
+            {t.history.spent} {formatCurrency(purchase.totalSpent, purchase.currency, language)}
           </Text>
           <Text style={[styles.meta, hasOverspent ? styles.negative : styles.positive]}>
-            {hasOverspent ? t.history.exceeded : t.history.remaining} {formatCurrency(Math.abs(balance))}
+            {hasOverspent ? t.history.exceeded : t.history.remaining}{' '}
+            {formatCurrency(Math.abs(balance), purchase.currency, language)}
           </Text>
         </View>
       </Pressable>

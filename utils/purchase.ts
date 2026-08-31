@@ -2,7 +2,34 @@ import { ActivePurchase, Product } from '../types/purchase';
 
 export type BudgetStatus = 'positive' | 'warning' | 'danger';
 
-export const parseNumber = (value: string): number => Number(value.replace(',', '.'));
+export const parseNumber = (value: string): number => {
+  const cleanedValue = value.trim().replace(/\s/g, '').replace(/[^\d,.-]/g, '');
+
+  if (!cleanedValue || cleanedValue === '-') {
+    return Number.NaN;
+  }
+
+  const lastComma = cleanedValue.lastIndexOf(',');
+  const lastDot = cleanedValue.lastIndexOf('.');
+  let normalizedValue = cleanedValue;
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    const decimalSeparator = lastComma > lastDot ? ',' : '.';
+    const thousandsSeparator = decimalSeparator === ',' ? '.' : ',';
+    normalizedValue = cleanedValue
+      .replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '')
+      .replace(decimalSeparator, '.');
+  } else if (lastComma !== -1) {
+    const digitsAfterComma = cleanedValue.length - lastComma - 1;
+    normalizedValue =
+      digitsAfterComma === 3 && lastComma > 0 ? cleanedValue.replace(/,/g, '') : cleanedValue.replace(',', '.');
+  } else if (lastDot !== -1) {
+    const digitsAfterDot = cleanedValue.length - lastDot - 1;
+    normalizedValue = digitsAfterDot === 3 && lastDot > 0 ? cleanedValue.replace(/\./g, '') : cleanedValue;
+  }
+
+  return Number(normalizedValue);
+};
 
 export const createId = (): string => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 

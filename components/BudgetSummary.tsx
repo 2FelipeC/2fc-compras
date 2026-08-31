@@ -7,13 +7,13 @@ import { formatCurrency } from '../utils/format';
 import { getBudgetPercentage, getBudgetProgress, getBudgetStatus, getPurchaseBalance } from '../utils/purchase';
 
 interface BudgetSummaryProps {
-  purchase: Pick<ActivePurchase, 'budget' | 'totalSpent'>;
+  purchase: Pick<ActivePurchase, 'budget' | 'currency' | 'totalSpent'>;
   compact?: boolean;
 }
 
 export function BudgetSummary({ purchase, compact = false }: BudgetSummaryProps) {
   const { theme } = useAppTheme();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const styles = createStyles(theme);
   const balance = getPurchaseBalance(purchase);
   const progress = getBudgetProgress(purchase);
@@ -28,18 +28,18 @@ export function BudgetSummary({ purchase, compact = false }: BudgetSummaryProps)
       <View style={styles.summaryRow}>
         <View style={styles.stat}>
           <Text style={styles.label}>{t.summary.budget}</Text>
-          <Text style={styles.value}>{formatCurrency(purchase.budget)}</Text>
+          <Text style={styles.value}>{formatCurrency(purchase.budget, purchase.currency, language)}</Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.label}>{t.summary.spent}</Text>
-          <Text style={styles.value}>{formatCurrency(purchase.totalSpent)}</Text>
+          <Text style={styles.value}>{formatCurrency(purchase.totalSpent, purchase.currency, language)}</Text>
         </View>
       </View>
 
       <View style={styles.availableBlock}>
         <Text style={styles.label}>{isOverBudget ? t.summary.exceeded : t.summary.available}</Text>
         <Text style={[styles.availableValue, isOverBudget ? styles.negativeValue : styles.positiveValue]}>
-          {formatCurrency(Math.abs(balance))}
+          {formatCurrency(Math.abs(balance), purchase.currency, language)}
         </Text>
       </View>
 
@@ -55,7 +55,7 @@ export function BudgetSummary({ purchase, compact = false }: BudgetSummaryProps)
         <View style={styles.overBudgetBox}>
           <Text style={styles.overBudgetTitle}>{t.summary.overBudgetTitle}</Text>
           <Text style={styles.overBudgetText}>
-            {t.summary.overBudgetText.replace('{{amount}}', formatCurrency(Math.abs(balance)))}
+            {t.summary.overBudgetText.replace('{{amount}}', formatCurrency(Math.abs(balance), purchase.currency, language))}
           </Text>
         </View>
       ) : null}
