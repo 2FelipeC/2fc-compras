@@ -1,10 +1,17 @@
 import { CurrencyCode } from './purchase';
 
-export const FINANCIAL_SCHEMA_VERSION = 3;
+export const FINANCIAL_SCHEMA_VERSION = 4;
 
 export type FinancialItemType = 'fixed' | 'variable';
 export type FinancialItemStatus = 'pending' | 'partial' | 'paid' | 'exceeded';
 export type FinancialPeriodStatus = 'draft' | 'open' | 'closed';
+
+export interface FinancialMovement {
+  id: string;
+  description: string;
+  amount: number;
+  createdAt: string;
+}
 
 export interface FinancialItem {
   id: string;
@@ -12,6 +19,7 @@ export interface FinancialItem {
   type: FinancialItemType;
   plannedAmount: number;
   paidAmount: number;
+  movements: FinancialMovement[];
   createdAt: string;
   updatedAt: string;
   paidAt?: string;

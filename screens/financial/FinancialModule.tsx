@@ -102,6 +102,8 @@ export function FinancialModule({ onBackToMenu }: Props) {
         onAddItem={(name, amount, type) => financial.addItem(periodId, name, amount, type)}
         onUpdateItem={(itemId, name, amount, type) => financial.updateItem(periodId, itemId, name, amount, type)}
         onUpdatePaid={(itemId, amount) => financial.updatePaidAmount(periodId, itemId, amount)}
+        onAddMovement={(itemId, description, amount) => financial.addMovement(periodId, itemId, description, amount)}
+        onDeleteMovement={(itemId, movementId) => financial.deleteMovement(periodId, itemId, movementId)}
         onMarkPaid={(itemId) => financial.markItemPaid(periodId, itemId)}
         onDeleteItem={(itemId) => financial.deleteItem(periodId, itemId)}
         onStartPeriod={() => financial.startPeriod(periodId)}

@@ -4,6 +4,7 @@ import {
   FinancialData,
   FinancialItem,
   FinancialItemType,
+  FinancialMovement,
   FinancialPeriod,
   FinancialPeriodStatus,
 } from '../types/financial';
@@ -32,19 +33,43 @@ const safeParse = (value: string): unknown | null => {
   }
 };
 
+const normalizeMovement = (value: unknown, fallbackDate: string): FinancialMovement | null => {
+  const movement = asRecord(value);
+  if (!movement || !isPositiveNumber(movement.amount)) return null;
+  return {
+    id: typeof movement.id === 'string' && movement.id ? movement.id : createId(),
+    description: typeof movement.description === 'string' ? movement.description.trim() : '',
+    amount: roundMoney(movement.amount),
+    createdAt: validDate(movement.createdAt, fallbackDate),
+  };
+};
+
 const normalizeItem = (value: unknown, fallbackDate: string): FinancialItem | null => {
   const item = asRecord(value);
   if (!item || typeof item.name !== 'string' || !item.name.trim() || !isPositiveNumber(item.plannedAmount)) {
     return null;
   }
   const createdAt = validDate(item.createdAt, fallbackDate);
-  const paidAmount = isNonNegativeNumber(item.paidAmount) ? roundMoney(item.paidAmount) : 0;
+  const type = normalizeItemType(item.type);
+  const storedPaidAmount = isNonNegativeNumber(item.paidAmount) ? roundMoney(item.paidAmount) : 0;
+  const movements = type === 'variable' && Array.isArray(item.movements)
+    ? item.movements
+        .map((entry) => normalizeMovement(entry, createdAt))
+        .filter((entry): entry is FinancialMovement => Boolean(entry))
+    : [];
+  if (type === 'variable' && movements.length === 0 && storedPaidAmount > 0) {
+    movements.push({ id: createId(), description: '', amount: storedPaidAmount, createdAt });
+  }
+  const paidAmount = type === 'variable'
+    ? roundMoney(movements.reduce((total, movement) => total + movement.amount, 0))
+    : storedPaidAmount;
   return {
     id: typeof item.id === 'string' && item.id ? item.id : createId(),
     name: item.name.trim(),
-    type: normalizeItemType(item.type),
+    type,
     plannedAmount: roundMoney(item.plannedAmount),
     paidAmount,
+    movements,
     createdAt,
     updatedAt: validDate(item.updatedAt, createdAt),
     paidAt: paidAmount > 0 ? validDate(item.paidAt, createdAt) : undefined,
@@ -95,6 +120,7 @@ const migrateLegacyPeriod = (value: unknown): FinancialPeriod | null => {
         type: 'fixed',
         plannedAmount: roundMoney(expense.amount),
         paidAmount,
+        movements: [],
         createdAt: itemCreatedAt,
         updatedAt: itemCreatedAt,
         paidAt: paidAmount > 0 ? validDate(expense.paidAt, itemCreatedAt) : undefined,
@@ -112,13 +138,25 @@ const migrateLegacyPeriod = (value: unknown): FinancialPeriod | null => {
           : null;
       if (!category || typeof category.name !== 'string' || !category.name.trim() || !plannedAmount) return;
       const itemCreatedAt = validDate(category.createdAt, createdAt);
-      const paidAmount = sumLegacyMovements(category.movements ?? category.payments);
+      const legacyEntries = Array.isArray(category.movements ?? category.payments)
+        ? (category.movements ?? category.payments) as unknown[]
+        : [];
+      const movements = legacyEntries
+        .map((entry) => normalizeMovement(entry, itemCreatedAt))
+        .filter((entry): entry is FinancialMovement => Boolean(entry));
+      const paidAmount = movements.length > 0
+        ? roundMoney(movements.reduce((total, movement) => total + movement.amount, 0))
+        : sumLegacyMovements(category.movements ?? category.payments);
+      if (movements.length === 0 && paidAmount > 0) {
+        movements.push({ id: createId(), description: '', amount: paidAmount, createdAt: itemCreatedAt });
+      }
       items.push({
         id: typeof category.id === 'string' && category.id ? category.id : createId(),
         name: category.name.trim(),
         type: 'variable',
         plannedAmount: roundMoney(plannedAmount),
         paidAmount,
+        movements,
         createdAt: itemCreatedAt,
         updatedAt: itemCreatedAt,
         paidAt: paidAmount > 0 ? itemCreatedAt : undefined,

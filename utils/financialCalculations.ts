@@ -20,7 +20,7 @@ export const getFinancialItemStatus = (
 export const getFinancialItemTotals = (
   item: Pick<FinancialItem, 'plannedAmount' | 'paidAmount'>,
 ): FinancialItemTotals => ({
-  remaining: roundMoney(Math.max(item.plannedAmount - item.paidAmount, 0)),
+  remaining: roundMoney(item.plannedAmount - item.paidAmount),
   exceeded: roundMoney(Math.max(item.paidAmount - item.plannedAmount, 0)),
   percentage: item.plannedAmount > 0 ? Math.round((item.paidAmount / item.plannedAmount) * 1000) / 10 : 0,
   status: getFinancialItemStatus(item),

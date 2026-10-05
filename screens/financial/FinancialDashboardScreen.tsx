@@ -23,6 +23,8 @@ interface Props {
   onAddItem: (name: string, amount: number, type: FinancialItemType) => void;
   onUpdateItem: (id: string, name: string, amount: number, type: FinancialItemType) => void;
   onUpdatePaid: (id: string, amount: number) => void;
+  onAddMovement: (itemId: string, description: string, amount: number) => void;
+  onDeleteMovement: (itemId: string, movementId: string) => void;
   onMarkPaid: (id: string) => void;
   onDeleteItem: (id: string) => void;
   onStartPeriod: () => void;
@@ -37,11 +39,14 @@ export function FinancialDashboardScreen(props: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [itemModal, setItemModal] = useState<ItemModal>(null);
   const [paidItem, setPaidItem] = useState<FinancialItem | null>(null);
+  const [movementItem, setMovementItem] = useState<FinancialItem | null>(null);
+  const [movementToDelete, setMovementToDelete] = useState<{ itemId: string; movementId: string } | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [confirmation, setConfirmation] = useState<'start' | 'close' | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FinancialItem | 'period' | null>(null);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
+  const [movementDescription, setMovementDescription] = useState('');
   const [type, setType] = useState<FinancialItemType>('fixed');
   const [startingAmount, setStartingAmount] = useState(String(props.period.startingAmount));
   const [currency, setCurrency] = useState<CurrencyCode>(props.period.currency);
@@ -65,6 +70,19 @@ export function FinancialDashboardScreen(props: Props) {
     if (!Number.isFinite(parsed) || parsed < 0) return Alert.alert(t.financial.invalidPaidTitle, t.financial.invalidPaidMessage);
     props.onUpdatePaid(paidItem.id, parsed);
     setPaidItem(null);
+  };
+  const openMovement = (item: FinancialItem) => {
+    setMovementDescription('');
+    setAmount('');
+    setMovementItem(item);
+  };
+  const submitMovement = () => {
+    if (!movementItem) return;
+    const parsed = parseNumber(amount);
+    if (!movementDescription.trim()) return Alert.alert(t.financial.missingMovementTitle, t.financial.missingMovementMessage);
+    if (!Number.isFinite(parsed) || parsed <= 0) return Alert.alert(t.financial.invalidAmountTitle, t.financial.invalidAmountMessage);
+    props.onAddMovement(movementItem.id, movementDescription.trim(), parsed);
+    setMovementItem(null);
   };
   const submitSettings = () => {
     const parsed = parseNumber(startingAmount);
@@ -92,7 +110,20 @@ export function FinancialDashboardScreen(props: Props) {
           </View>
           <View style={styles.filters}>{(['all', 'fixed', 'variable'] as Filter[]).map((value) => <Pressable key={value} style={[styles.chip, filter === value && styles.chipActive]} onPress={() => setFilter(value)}><Text style={[styles.chipText, filter === value && styles.chipTextActive]}>{value === 'all' ? t.financial.all : value === 'fixed' ? t.financial.fixedPlural : t.financial.variablePlural}</Text></Pressable>)}</View>
           {props.period.items.length === 0 && <View style={styles.empty}><Text style={styles.emptyText}>{t.financial.noItems}</Text>{!isReadOnly && <PrimaryButton label={t.financial.addExpense} iconName="add" onPress={openAdd} />}</View>}
-          <View style={styles.list}>{visibleItems.map((item) => <FinancialItemCard key={item.id} item={item} currency={props.period.currency} readOnly={isReadOnly} onMarkPaid={() => props.onMarkPaid(item.id)} onChangePaid={() => { setAmount(String(item.paidAmount)); setPaidItem(item); }} onEdit={() => openEdit(item)} onDelete={() => setDeleteTarget(item)} />)}</View>
+          <View style={styles.list}>{visibleItems.map((item) => (
+            <FinancialItemCard
+              key={item.id}
+              item={item}
+              currency={props.period.currency}
+              readOnly={isReadOnly}
+              onMarkPaid={() => props.onMarkPaid(item.id)}
+              onChangePaid={() => { setAmount(String(item.paidAmount)); setPaidItem(item); }}
+              onAddMovement={() => openMovement(item)}
+              onDeleteMovement={(movementId) => setMovementToDelete({ itemId: item.id, movementId })}
+              onEdit={() => openEdit(item)}
+              onDelete={() => setDeleteTarget(item)}
+            />
+          ))}</View>
         </View>
 
         {props.period.status === 'draft' && <PrimaryButton label={t.financial.startMonth} iconName="play-outline" onPress={() => setConfirmation('start')} />}
@@ -112,6 +143,16 @@ export function FinancialDashboardScreen(props: Props) {
         <Text style={styles.modalTitle}>{paidItem?.type === 'variable' ? t.financial.updateSpent : t.financial.updatePaid}</Text><Text style={styles.counter}>{paidItem?.name}</Text>
         <Text style={styles.label}>{paidItem?.type === 'variable' ? t.financial.spent : t.financial.paid}</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" style={styles.input} placeholder="0,00" placeholderTextColor={theme.colors.textSecondary} />
         <PrimaryButton label={paidItem?.type === 'variable' ? t.financial.updateSpent : t.financial.updatePaid} iconName="cash-outline" onPress={submitPaid} /><PrimaryButton label={t.common.cancel} variant="secondary" onPress={() => setPaidItem(null)} />
+      </View></View></Modal>
+
+      <Modal visible={Boolean(movementItem)} transparent animationType="slide" onRequestClose={() => setMovementItem(null)}><View style={styles.overlay}><View style={styles.modal}>
+        <Text style={styles.modalTitle}>{t.financial.addMovement}</Text><Text style={styles.counter}>{movementItem?.name}</Text>
+        <Text style={styles.label}>{t.financial.movementDescription}</Text>
+        <TextInput value={movementDescription} onChangeText={setMovementDescription} style={styles.input} placeholder={t.financial.movementDescriptionPlaceholder} placeholderTextColor={theme.colors.textSecondary} autoFocus />
+        <Text style={styles.label}>{t.financial.amount}</Text>
+        <TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" style={styles.input} placeholder="0,00" placeholderTextColor={theme.colors.textSecondary} />
+        <PrimaryButton label={t.financial.addMovement} iconName="add-circle-outline" onPress={submitMovement} />
+        <PrimaryButton label={t.common.cancel} variant="secondary" onPress={() => setMovementItem(null)} />
       </View></View></Modal>
 
       <Modal visible={settingsVisible} transparent animationType="slide" onRequestClose={() => setSettingsVisible(false)}><View style={styles.overlay}><View style={styles.modal}>
@@ -152,6 +193,21 @@ export function FinancialDashboardScreen(props: Props) {
           }}
         />
         <PrimaryButton label={t.common.cancel} variant="secondary" onPress={() => setDeleteTarget(null)} />
+      </View></View></Modal>
+
+      <Modal visible={Boolean(movementToDelete)} transparent animationType="fade" onRequestClose={() => setMovementToDelete(null)}><View style={styles.overlay}><View style={styles.modal}>
+        <Text style={styles.modalTitle}>{t.financial.deleteMovementTitle}</Text>
+        <Text style={styles.confirmationText}>{t.financial.deleteMovementMessage}</Text>
+        <PrimaryButton
+          label={t.financial.deleteMovement}
+          iconName="trash-outline"
+          variant="dangerOutline"
+          onPress={() => {
+            if (movementToDelete) props.onDeleteMovement(movementToDelete.itemId, movementToDelete.movementId);
+            setMovementToDelete(null);
+          }}
+        />
+        <PrimaryButton label={t.common.cancel} variant="secondary" onPress={() => setMovementToDelete(null)} />
       </View></View></Modal>
     </>
   );

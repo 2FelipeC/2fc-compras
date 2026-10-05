@@ -5,6 +5,7 @@ import {
   FinancialData,
   FinancialItem,
   FinancialItemType,
+  FinancialMovement,
   FinancialPeriod,
 } from '../types/financial';
 import { CurrencyCode } from '../types/purchase';
@@ -79,6 +80,7 @@ export function useFinancial() {
       type,
       plannedAmount: roundMoney(plannedAmount),
       paidAmount: 0,
+      movements: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -90,7 +92,20 @@ export function useFinancial() {
       ...period,
       items: period.items.map((item) =>
         item.id === itemId
-          ? { ...item, name: name.trim(), plannedAmount: roundMoney(plannedAmount), type, updatedAt: new Date().toISOString() }
+          ? {
+              ...item,
+              name: name.trim(),
+              plannedAmount: roundMoney(plannedAmount),
+              type,
+              movements: type === 'variable'
+                ? item.type === 'variable'
+                  ? item.movements
+                  : item.paidAmount > 0
+                    ? [{ id: createId(), description: '', amount: item.paidAmount, createdAt: new Date().toISOString() }]
+                    : []
+                : [],
+              updatedAt: new Date().toISOString(),
+            }
           : item,
       ),
     }));
@@ -101,9 +116,47 @@ export function useFinancial() {
       ...period,
       items: period.items.map((item) => {
         if (item.id !== itemId) return item;
+        if (item.type === 'variable') return item;
         const nextPaid = roundMoney(paidAmount);
         const now = new Date().toISOString();
         return { ...item, paidAmount: nextPaid, updatedAt: now, paidAt: nextPaid >= item.plannedAmount ? now : undefined };
+      }),
+    }));
+  };
+
+  const addMovement = (periodId: string, itemId: string, description: string, amount: number) => {
+    updatePeriod(periodId, (period) => ({
+      ...period,
+      items: period.items.map((item) => {
+        if (item.id !== itemId || item.type !== 'variable') return item;
+        const now = new Date().toISOString();
+        const movement: FinancialMovement = {
+          id: createId(),
+          description: description.trim(),
+          amount: roundMoney(amount),
+          createdAt: now,
+        };
+        const movements = [movement, ...item.movements];
+        const paidAmount = roundMoney(movements.reduce((total, entry) => total + entry.amount, 0));
+        return { ...item, movements, paidAmount, updatedAt: now, paidAt: paidAmount >= item.plannedAmount ? now : undefined };
+      }),
+    }));
+  };
+
+  const deleteMovement = (periodId: string, itemId: string, movementId: string) => {
+    updatePeriod(periodId, (period) => ({
+      ...period,
+      items: period.items.map((item) => {
+        if (item.id !== itemId || item.type !== 'variable') return item;
+        const movements = item.movements.filter((movement) => movement.id !== movementId);
+        const paidAmount = roundMoney(movements.reduce((total, entry) => total + entry.amount, 0));
+        return {
+          ...item,
+          movements,
+          paidAmount,
+          updatedAt: new Date().toISOString(),
+          paidAt: paidAmount >= item.plannedAmount ? item.paidAt ?? new Date().toISOString() : undefined,
+        };
       }),
     }));
   };
@@ -144,6 +197,8 @@ export function useFinancial() {
     addItem,
     updateItem,
     updatePaidAmount,
+    addMovement,
+    deleteMovement,
     markItemPaid,
     deleteItem,
     startPeriod,
