@@ -7,7 +7,7 @@ module.exports = {
   swDest: 'dist/sw.js',
   cleanupOutdatedCaches: true,
   clientsClaim: true,
-  skipWaiting: false,
+  skipWaiting: true,
   navigateFallback: '/index.html',
   navigateFallbackDenylist: [/^\/(?:manifest\.json|sw\.js|workbox-.*\.js)$/],
 };
